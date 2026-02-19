@@ -3,64 +3,64 @@ import nmap
 import socket
 
 def scan_network():
-    # 1. Ask for target
-    target = input("Enter target IP or range (e.g., 192.168.0.0/26): ")
+    target = input("Welk IP-bereik wil je scannen? (bijv. 192.168.0.0/26): ")
     nm = nmap.PortScanner()
     
-    print(f"\nScanning {target} (Aggressive Mode)...\n")
-    print(f"{'IP Address':<15} {'MAC Address':<20} {'Hostname':<25} {'OS & Services'}")
-    print("=" * 100)
+    print("\nStart scan op: " + target)
+    print("IP Adres        MAC Adres           Hostname                  OS & Services")
+    print("=" * 90)
 
-    # 2. Find Hosts (Scapy)
+    # Scapy ARP scan
     arp_packet = scapy.Ether(dst="ff:ff:ff:ff:ff:ff") / scapy.ARP(pdst=target)
-    answered = scapy.srp(arp_packet, timeout=1, verbose=False)[0]
+    answered = scapy.srp(arp_packet, timeout=2, verbose=False, iface="Ethernet")[0]
+
+    if len(answered) == 0:
+        print("\nGeen apparaten gevonden. Check of je ethernetkabel goed vastzit en voer VS Code uit als Administrator.")
+        return
 
     for sent, received in answered:
         ip = received.psrc
         mac = received.hwsrc
 
-        # 3. Filter Students (Range .50 - .250)
+        # Negeer studenten laptops (50 t/m 250)
         try:
-            last_octet = int(ip.split('.')[-1])
-            if 50 <= last_octet <= 250:
+            laatste_getal = int(ip.split('.')[-1])
+            if 50 <= laatste_getal <= 250:
                 continue
         except:
             pass
 
-        # 4. Get Hostname
+        # Hostname ophalen
         try:
             hostname = socket.gethostbyaddr(ip)[0]
         except:
             hostname = "Unknown"
 
-        # 5. Get OS & Services (Aggressive)
+        # OS en Services ophalen met Nmap
         os_info = "Unknown"
         services = []
         try:
-            # -O checks OS, --osscan-guess guesses if unsure, -F is fast mode
             nm.scan(ip, arguments='-O --osscan-guess -F')
             
-            # Check for OS match
-            if 'osmatch' in nm[ip] and nm[ip]['osmatch']:
+            if 'osmatch' in nm[ip] and len(nm[ip]['osmatch']) > 0:
                 os_info = nm[ip]['osmatch'][0]['name']
             
-            # Check for Open Ports
             if 'tcp' in nm[ip]:
                 for port, data in nm[ip]['tcp'].items():
-                    services.append(f"{port}/{data['name']}")
+                    services.append(str(port) + "/" + data['name'])
         except:
             pass
 
-        # 6. Print Results
-        print(f"{ip:<15} {mac:<20} {hostname:<25} {os_info}")
+        # Printen
+        print(ip.ljust(15) + " " + mac.ljust(19) + " " + hostname.ljust(25) + " " + os_info)
         
-        if services:
+        if len(services) > 0:
             for svc in services:
-                print(f"{'':<62} -> {svc}")
+                print("".ljust(61) + " -> " + svc)
         else:
-            print(f"{'':<62} -> No open ports found (Firewalled)")
+            print("".ljust(61) + " -> Geen open poorten (Firewall)")
         
-        print("-" * 100)
+        print("-" * 90)
 
 if __name__ == "__main__":
     scan_network()
