@@ -18,17 +18,21 @@ async def client_connect(username, password, variance=0.10):
         reply -- string of server's response to login attempt
     """
 
-    #server_address = "ws://20.224.193.77:8080"
-    server_address = "ws://127.0.0.1:8080"
+    server_address = "ws://20.224.193.77:8080"
+    #server_address = "ws://127.0.0.1:8080"
+    #server_address = "ws://localhost:3840"
     
     while True:
         try:
             async with websockets.connect(server_address) as websocket:
-                await websocket.send(dumps([username,password,variance]))
+                await websocket.send(dumps([username, password, variance]))
                 reply = await websocket.recv()
-            return loads(reply)
-        except:
-            continue
+                return loads(reply)
+        except Exception as error:
+        # Dit laat je in de terminal zien waarom het niet werkt
+            print(f"Er is een fout opgetreden: {error}")
+        # Wacht 2 seconden voor de volgende poging
+            await asyncio.sleep(2)
 
 def call_server(username, password, variance=0.001):
     """Send a login attempt of username + password to the server
@@ -49,7 +53,8 @@ def call_server(username, password, variance=0.001):
         reply -- string of server's response to login attempt
     """
 
-    reply = asyncio.get_event_loop().run_until_complete(client_connect(username,password,variance))
+    # Modern style (clean and warning-free)
+    reply = asyncio.run(client_connect(username, password, variance=0.001))
     sleep(0.001) # Wait so as to not overload the server with 90 students at once!
     return (reply)
 
