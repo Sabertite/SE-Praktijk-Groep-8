@@ -24,7 +24,7 @@ def get_stable_time(student_number, password):
     ignores 'lag spikes' (outliers).
     """
     # INCREASE THIS for Wi-Fi: 50 is good, 100 is very stable but slower.
-    SAMPLES = 100 
+    SAMPLES = 20
     
     times = []
     for _ in range(SAMPLES):
