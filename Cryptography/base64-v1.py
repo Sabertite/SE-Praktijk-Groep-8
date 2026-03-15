@@ -2,51 +2,32 @@ import base64
 
 def string_to_b64(asciiString):
     """
-    Converts a given ASCII-string to its b64-encoded equivalent.
-    Parameters
-    ----------
-    asciiString : string
-        string to be converted
-
-    Returns
-    -------
-    bytes
-        b64-encoded bytes-object representing the original string
+    Turns a normal piece of text into a Base64 encoded version.
     """
-    # Convert the string to a bytes object using ASCII encoding
+    # Step 1: Turn the text into raw computer data (bytes)
     byte_data = asciiString.encode('ascii')
     
-    # Encode the raw bytes into base64 format
+    # Step 2: Convert those raw bytes into the Base64 format
     b64String = base64.b64encode(byte_data)
 
     return b64String
 
-# Laat deze asserts onaangetast!
+# These 'asserts' check if the code works correctly. Do not change them!
 assert type(string_to_b64("foo")) == bytes
 assert string_to_b64("Hello World") == b'SGVsbG8gV29ybGQ='
 
 def b64_to_string(b64String):
     """
-    Converts a given b64-string to its ASCII equivalent.
-
-    Parameters
-    ----------
-    b64String : bytes
-        b64-encoded bytesobject to be converted
-
-    Returns
-    -------
-    string
-        ASCII string
+    Takes a Base64 encoded piece of data and turns it back into readable text.
     """
-    # Decode the base64 data back to standard bytes
+    # Step 1: Decode the Base64 data back into raw bytes
     decoded_bytes = base64.b64decode(b64String)
     
-    # Convert the decoded bytes back into a readable string
+    # Step 2: Turn those raw bytes back into a readable string (text)
     asciiString = decoded_bytes.decode('ascii')
 
     return asciiString
 
-# Laat deze asserts onaangetast!
+# These checks ensure the decoding works as expected.
 assert type(b64_to_string("SGVsbG8gV29ybGQ=")) == str
 assert b64_to_string("SGVsbG8gV29ybGQ=") == "Hello World"
